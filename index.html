@@ -1,0 +1,186 @@
+import React, { useState, useEffect } from 'react';
+import { RotateCcw } from 'lucide-react';
+
+export default function TowerOfHanoi() {
+  const [numDisks, setNumDisks] = useState(5);
+  const [towers, setTowers] = useState([[], [], []]);
+  const [draggedDisk, setDraggedDisk] = useState(null);
+  const [draggedFromTower, setDraggedFromTower] = useState(null);
+  const [moves, setMoves] = useState(0);
+  const [minMoves, setMinMoves] = useState(31);
+  const [gameWon, setGameWon] = useState(false);
+
+  useEffect(() => {
+    resetGame();
+  }, [numDisks]);
+
+  useEffect(() => {
+    if (towers[2].length === numDisks && numDisks > 0) {
+      setGameWon(true);
+    }
+  }, [towers, numDisks]);
+
+  const resetGame = () => {
+    const initialTower = Array.from({ length: numDisks }, (_, i) => numDisks - i);
+    setTowers([initialTower, [], []]);
+    setDraggedDisk(null);
+    setDraggedFromTower(null);
+    setMoves(0);
+    setMinMoves(Math.pow(2, numDisks) - 1);
+    setGameWon(false);
+  };
+
+  const handleDragStart = (e, towerIndex, diskSize) => {
+    const tower = towers[towerIndex];
+    if (tower[tower.length - 1] === diskSize) {
+      setDraggedDisk(diskSize);
+      setDraggedFromTower(towerIndex);
+      e.dataTransfer.effectAllowed = 'move';
+    } else {
+      e.preventDefault();
+    }
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e, towerIndex) => {
+    e.preventDefault();
+    
+    if (draggedFromTower === null || draggedDisk === null) return;
+    
+    if (towerIndex === draggedFromTower) {
+      setDraggedDisk(null);
+      setDraggedFromTower(null);
+      return;
+    }
+
+    const targetTower = towers[towerIndex];
+    
+    if (targetTower.length === 0 || draggedDisk < targetTower[targetTower.length - 1]) {
+      const newTowers = towers.map((tower, idx) => {
+        if (idx === draggedFromTower) {
+          return tower.slice(0, -1);
+        }
+        if (idx === towerIndex) {
+          return [...tower, draggedDisk];
+        }
+        return tower;
+      });
+      setTowers(newTowers);
+      setMoves(moves + 1);
+    }
+    
+    setDraggedDisk(null);
+    setDraggedFromTower(null);
+  };
+
+  const getDiskColor = (size) => {
+    const colors = [
+      '#3b82f6', // bright blue
+      '#22c55e', // bright green
+      '#eab308', // yellow
+      '#ef4444', // red
+      '#a855f7', // purple
+      '#9caf88', // mustard green
+      '#ec4899', // pink
+      '#f97316'  // orange
+    ];
+    return colors[(size - 1) % colors.length];
+  };
+
+  const getDiskWidth = (size) => {
+    const baseWidth = 60;
+    const increment = 30;
+    return baseWidth + (size * increment);
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-cyan-100 to-cyan-200 p-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-8">
+          <div className="bg-white rounded-xl shadow-lg p-6 mb-6 inline-block">
+            <div className="flex items-center gap-6 mb-4">
+              <label className="text-gray-700 font-semibold">Disks:</label>
+              <select 
+                value={numDisks} 
+                onChange={(e) => setNumDisks(parseInt(e.target.value))}
+                className="px-4 py-2 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400"
+              >
+                {[3, 4, 5, 6, 7, 8].map(n => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+              <button
+                onClick={resetGame}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors font-semibold"
+              >
+                <RotateCcw size={18} />
+                Reset
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="text-center mb-6">
+          <div className="text-6xl font-bold text-orange-500">{moves}</div>
+        </div>
+
+        {gameWon && (
+          <div className="bg-green-100 border-2 border-green-500 rounded-lg p-4 mb-6 text-center">
+            <h2 className="text-2xl font-bold text-green-700 mb-2">🎉 Congratulations! 🎉</h2>
+            <p className="text-green-600">
+              You solved it in {moves} moves! 
+              {moves === minMoves ? ' Perfect score!' : ` (Minimum was ${minMoves})`}
+            </p>
+          </div>
+        )}
+
+        <div className="bg-white rounded-2xl shadow-2xl p-8 relative" style={{ height: '500px' }}>
+          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gray-600 rounded-b-2xl"></div>
+          
+          <div className="flex justify-around items-end relative" style={{ height: '100%' }}>
+            {towers.map((tower, towerIndex) => (
+              <div
+                key={towerIndex}
+                onDragOver={handleDragOver}
+                onDrop={(e) => handleDrop(e, towerIndex)}
+                className="relative flex flex-col items-center justify-end"
+                style={{ width: '300px', height: '100%' }}
+              >
+                <div className="absolute bottom-16 w-6 bg-gray-500 rounded-t-lg border-2 border-gray-600" style={{ height: '380px' }}></div>
+                
+                <div className="flex flex-col-reverse items-center gap-0 mb-16 relative z-10">
+                  {tower.map((diskSize, diskIndex) => {
+                    const isTopDisk = diskIndex === tower.length - 1;
+                    return (
+                      <div
+                        key={diskIndex}
+                        draggable={isTopDisk}
+                        onDragStart={(e) => handleDragStart(e, towerIndex, diskSize)}
+                        className={`h-10 rounded-lg border-2 transition-all ${
+                          isTopDisk ? 'cursor-grab hover:brightness-110 active:cursor-grabbing border-black' : 'cursor-not-allowed border-gray-700'
+                        }`}
+                        style={{
+                          width: `${getDiskWidth(diskSize)}px`,
+                          backgroundColor: getDiskColor(diskSize),
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                        }}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 bg-blue-50 rounded-lg p-4 text-sm text-gray-700 text-center">
+          <p className="font-semibold">Drag the top disk from any tower and drop it on another tower. Smaller disks must be on top of larger disks.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
